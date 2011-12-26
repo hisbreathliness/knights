@@ -1,6 +1,13 @@
 # Knight's tour
 
-"""The main data structure used here is the path.  This is a list of x,y
+"""
+This program find a non-overlapping Knight's Tour from a given starting point.
+Along the way, it outputs the number of spaces it's considered along with
+the number of spaces currently traversed by the knight, in a format graphable
+by gnuplot.
+
+
+The main data structure used here is the path.  This is a list of x,y
 coordinates as 2-element tuples."""
 
 import optparse
@@ -47,34 +54,34 @@ def find_tour(x, y):
     Return value is a tuple of: number of possible moves considered, path that shows
     the knight's tour for that starting point."""
     path = [(x,y)]
-    return find_tour_helper(path, get_path_destinations(path, path[-1]))
+    return find_tour_helper(path, get_path_destinations(path, path[-1]), 0)
     
-def find_tour_helper(path, dests):
+def find_tour_helper(path, dests, move_counter):
     """ Helper function not meant to be called directly."""
     # the knight is sitting at the last spot in the path, and we just need to
     # decide which of the spots in the dests list it should go to next
+    print move_counter, len(path)
     missing = missing_spaces(path)
     if len(missing) == 0:   # end the search when we've covered all the spaces
-        return 1, path
-    print len(path), len(dests), path_to_str(missing), path_to_str(path)
+        return True, 0, path
+    #print len(path), len(dests), path_to_str(missing), path_to_str(path)
     # annotate the destinations with a list of the possible moves the knight could make from them
     next_step = [(d, get_path_destinations(path, d)) for d in dests]
+    tries = len(next_step)  # track number of moves we've considered so far
     # heuristic (Warnsdorff's rule): the moves which have the least number of
     # subsequent moves, i.e. are the most constrained, are best
     next_step.sort(key=lambda ns: len(ns[1]))
-    my_options = 0
     for d, next_dests in next_step:
         newp = list(path)
         newp.append(d)   # "move" the knight by creating a new path with the dest at the end
-        options, best = find_tour_helper(newp, next_dests)
-        my_options += options
-        my_options += len(next_dests)
-        if options > 0:
-            return my_options, best
+        success, next_tries, best = find_tour_helper(newp, next_dests, move_counter + tries)
+        tries += next_tries
+        if success:
+            return True, tries, best
         # unstated else clause: if options are 0, newp wasn't a path that lead to
         # a successful result, so we need to try another move at this point
         
-    return 0, path  # made it through all our dests without finding a path (or there were 0 dests)
+    return False, tries, path  # made it through all our dests without finding a path (or there were 0 dests)
 
 
 class Tests(unittest.TestCase):
@@ -96,6 +103,9 @@ if __name__ == '__main__':
         if len(args) > 1:
             x = int(args[0])
             y = int(args[1])
-        tour = find_tour(x,y)
-        print "Found tour starting from %s,%s considering %s moves:" % (x,y, tour[0])
-        print path_to_str(tour[1])
+        success, tries, tour = find_tour(x,y)
+        if not success:
+            print "Could not find tour"
+        else:
+            print "Found tour starting from %s,%s considering %s moves:" % (x,y, tries)
+            print path_to_str(tour)
